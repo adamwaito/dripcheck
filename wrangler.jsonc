@@ -1,0 +1,24 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "dripcheck-push",
+	"main": "worker/index.js",
+	"compatibility_date": "2026-10-05",
+	"workers_dev": true,
+	"vars": {
+		"ALLOWED_ORIGINS": "https://dripcheck.oksure.cc,http://localhost:8000",
+		"VAPID_SUBJECT": "mailto:adamwaito@gmail.com"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "dripcheck-push",
+			"database_id": "423e14bf-7f96-408e-b8dc-9d0b4c0c74e2",
+			"remote": true
+		}
+	],
+	"triggers": {
+		"crons": [
+			"*/15 * * * *"
+		]
+	}
+}

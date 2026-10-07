@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>DripCheck</title>
+<meta name="theme-color" content="#e9e8e8">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./drip-icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4eeee;
+    --ink:rgb(36, 34, 36);
+    --ink-soft:rgba(60, 60, 67, 0.819);
+    --violet:#6c8a8a;
+    --violet-soft:#9395ff;
+    --alert:#e7002f;
+    --ribbon: var(--ink);
+    --white:#fcf9f9;
+    --panel:#f4eeee;
+    --shadow:0 26px 70px rgba(7,7,12,0.24);
+    --overlay-blink-speed:900ms;
+  }
+  *{box-sizing:border-box;}
+  /* Base text size scales with screen width (16px at 375px wide), capped between 13px and 17px */
+  html{ font-size:clamp(13px, 4.267vw, 17px); }
+  html,body{
+    height:100%;
+    overflow:hidden;
+    overscroll-behavior:none;
+  }
+  body{
+    margin:0;
+    min-height:100dvh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:radial-gradient(120% 80% at 50% -10%, #ffffff 0%, #e5e4eb 100%);
+    font-family:'Instrument Sans',sans-serif;
+    color:var(--ink);
+    padding:28px 14px;
+  }
+  .phone{
+    width:100%;
+    max-width:398px;
+    aspect-ratio:375/812;
+    background:var(--paper);
+    border-radius:38px;
+    border:1px solid rgba(255,255,255,0.82);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+  }
+
+  .illustration-layer{
+    position:absolute;
+    inset:0;
+    z-index:0;
+    pointer-events:none;
+    overflow:hidden;
+    background:var(--paper);
+  }
+  .illustration-layer img:not(.art-img):not(.state-overlay){ display:none; }
+  .art-img{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .art-tint{
+    position:absolute;
+    inset:0;
+    -webkit-mask:var(--art-mask) center / cover no-repeat;
+    mask:var(--art-mask) center / cover no-repeat;
+  }
+  .art-tint.violet{ background:var(--violet); --art-mask:url(images/underlay_mask.png); }
+  .art-tint.ink{ background:var(--ink); --art-mask:url(images/underlay_ink_mask.png); }
+  #noOverlay{ background:var(--ink); --art-mask:url(images/NO_overlay.png); }
+  #yesOverlay{ background:var(--ink); --art-mask:url(images/YES_overlay.png); }
+  .art-tint.white{ background:var(--white); --art-mask:url(images/underlay_white_mask.png); }
+  .state-overlay{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .state-overlay.blink{ animation:overlay-blink var(--overlay-blink-speed) steps(1, end) infinite; }
+  .state-overlay.is-hidden{ display:none; }
+  @keyframes overlay-blink{
+    0%, 49%{ opacity:1; }
+    50%, 100%{ opacity:0; }
+  }
+
+  .content{
+    position:relative;
+    z-index:1;
+    display:flex;
+    flex-direction:column;
+    flex:1;
+    min-height:0;
+    background:transparent;
+  }
+
+  .topbar{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    padding:5% 6.4% 0;
+  }
+  .topbar-actions{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .place{
+    font-size:1.1875rem;
+    line-height:1;
+    color:var(--ink);
+    font-weight:500;
+    background:none;
+    border:none;
+    font-family:'Instrument Sans',sans-serif;
+    cursor:pointer;
+    padding:0;
+    display:flex;
+    flex-direction:row;
+    align-items:center;
+    gap:6px;
+    text-transform:lowercase;
+  }
+  .place svg{ width:12px; height:12px; opacity:.95; }
+  .iconbtn{
+    width:34px;
+    height:34px;
+    border-radius:10px;
+    border:none;
+    background:none;
+    color:var(--violet);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:transform .2s ease;
+    flex-shrink:0;
+  }
+  .iconbtn:active{ transform:scale(.92); }
+
+  .now-temp{
+    font-family:'Instrument Sans',sans-serif;
+    font-weight:400;
+    font-size:2.25rem;
+    line-height:.88;
+    color:var(--violet);
+    padding:0 6.4% 0;
+    letter-spacing:-.02em;
+  }
+
+  .hero{
+    text-align:center;
+    padding:12% 6.4% 0;
+    position:relative;
+    min-height:48%;
+  }
+  .hero > *{ position:relative; z-index:1; }
+  .hero-q{
+    font-family:'Instrument Sans',sans-serif;
+    font-style: italic;
+    font-size: clamp(1rem, 5.2vw, 1.375rem);
+    white-space: nowrap;
+    line-height: 1.25;
+    font-weight: 400;
+    color:var(--ink);
+    margin:0 auto 14px;
+    max-width:none;
+  }
+  .verdict{
+    position:absolute;
+    right:8%;
+    top:70%;
+    transform:translateY(-50%);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    gap:10px;
+    font-family:'Instrument Sans',sans-serif;
+    font-weight: 400;
+    color:var(--ink);
+    font-size:2.25rem;
+    line-height:.9;
+    margin:0;
+    text-transform:uppercase;
+    opacity: 0%;
+
+  }
+  .verdict::before{
+    content:"";
+    width:0;
+    height:0;
+    
+  }
+
+  .verdict-sub{
+    font-family:'Instrument Sans',sans-serif;
+    font-size:1.125rem;
+    line-height:1.25;
+    font-weight:400;
+    color:var(--white);
+    width:100%;
+    margin:-40px 0 0;
+    box-sizing:border-box;
+    padding:24px 8%;
+    text-align:left;
+    background:var(--ribbon);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+  .verdict-sub.alarm{ background:var(--alert); color:var(--white); }
+
+  .forecast-date{
+    margin: 90px auto 0;
+    padding:0 8%;
+    width:fit-content;
+    font-family:'Instrument Sans',sans-serif;
+    font-size:0.75rem;
+    line-height:1.2;
+    font-weight: 600;
+    text-transform:uppercase;
+    color:var(--white);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  .forecast-list{
+    width:fit-content;
+    margin: 0px auto 0;
+    padding:8px 0 28px;
+    display:grid;
+    gap:3px;
+    color:var(--white);
+    position:relative;
+    background:transparent;
+    justify-items:stretch;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+  .forecast-list::before,
+  .forecast-list::after{ content:none; }
+  .row{
+    display:grid;
+    grid-template-columns:38px 80px 20px;
+    align-items:center;
+    column-gap:10px;
+    width:auto;
+    padding: 1px;;
+    border-radius:16px;
+    color:var(--white);
+    position:relative;
+    z-index:1;
+  }
+  .row-temp{ font-weight:300; font-size:1rem; width:2.375rem; flex-shrink:0; text-align:right; }
+  .row-period{ font-weight:300; font-size:1rem; text-align:left; }
+  .row.alarm{
+    background:#121212;
+  }
+  .row.alarm .row-temp,
+  .row.alarm .row-period{ color:var(--alert); }
+  .info-btn{
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    border:2px solid currentColor;
+    background:transparent;
+    color:inherit;
+    font-size:0.75rem;
+    font-weight:600;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    flex-shrink:0;
+    font-family:'Instrument Sans',sans-serif;
+    opacity:1;
+    margin-left:0;
+  }
+  .row:not(.alarm) .info-btn{ color:rgba(255,255,255,.9); }
+
+  .art-badge{
+    position:absolute;
+    right:7%;
+    top:52%;
+    width:26%;
+    height:18%;
+    border-radius:20px;
+    background:#121212;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    color:var(--alert);
+    font-family:'Instrument Sans',sans-serif;
+    font-size:3rem;
+    letter-spacing:.02em;
+    z-index:1;
+  }
+  .art-badge.show{ display:flex; }
+
+  .state-msg{
+    padding:12% 8%;
+    text-align:center;
+    color:rgba(255,255,255,.82);
+    font-size:0.8125rem;
+    line-height:1.5;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+  }
+  
+  .skeleton-line{
+    height:14px;
+    border-radius:6px;
+    width:60%;
+    background:linear-gradient(90deg, rgba(255,255,255,.18) 25%, rgba(255,255,255,.35) 37%, rgba(255,255,255,.18) 63%);
+    background-size:400% 100%;
+    animation:shimmer 1.4s ease infinite;
+  }
+  .skeleton-line.wide{ width:70%; }
+  .skeleton-line.narrow{ width:50%; }
+  @keyframes shimmer{ 0%{background-position:100% 0;} 100%{background-position:0 0;} }
+  .retry{
+    border:1px solid rgba(255,255,255,.9);
+    color:var(--white);
+    background:transparent;
+    padding:9px 18px;
+    border-radius:12px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:0.84375rem;
+  }
+
+  .overlay{
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,0.55);
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:20;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .22s ease;
+  }
+  .overlay.open{ opacity:1; pointer-events:all; }
+  .sheet{
+    width:100%;
+    background:var(--panel);
+    border-top:1px solid var(--ink);
+    border-radius:24px 24px 0 0;
+    padding:22px 22px 28px;
+    transform:translateY(100%);
+    transition:transform .28s cubic-bezier(.25,.9,.35,1);
+    color:var(--ink);
+  }
+  .overlay.open .sheet{ transform:translateY(0); }
+  .sheet-title{ font-family:'Instrument Sans',sans-serif; font-weight:700; font-size:1.0625rem; margin:0 0 8px; }
+  .sheet-body{ font-size:0.875rem; line-height:1.55; color:var(--ink-soft); margin:0 0 18px; }
+  .sheet-close{
+    width:100%;
+    padding:12px;
+    border-radius:14px;
+    border:none;
+    cursor:pointer;
+    font-family:'Instrument Sans',sans-serif;
+    font-weight:700;
+    font-size:0.90625rem;
+    background:var(--violet);
+    color: var(--white);
+  }
+  .sheet-close.ghost{ background:transparent; color:var(--ink-soft); border:1px solid var(--divider); margin-top:8px; }
+  .city-input{
+    width:100%;
+    padding:13px 14px;
+    border-radius:14px;
+    border:1px solid var(--ink);
+    background:var(--paper);
+    color:var(--ink);
+    font-family:inherit;
+    font-size:0.9375rem;
+    margin-bottom:12px;
+    outline:none;
+  }
+  .city-input:focus{ border-color:var(--violet); }
+  .city-results{ display:flex; flex-direction:column; gap:6px; margin-bottom:6px; max-height:240px; overflow-y:auto; }
+  .city-result{
+    text-align:left;
+    padding:12px 13px;
+    border-radius:12px;
+    border:1px solid var(--divider);
+    background:var(--paper);
+    color:var(--ink);
+    font-family:inherit;
+    font-size:0.875rem;
+    cursor:pointer;
+  }
+  .city-result:hover{ border-color:var(--violet); }
+  .city-result .sub{ display:block; font-size:0.75rem; color:var(--ink-soft); margin-top:2px; }
+  .city-hint{ font-size:0.78125rem; color:var(--ink-soft); text-align:center; padding:10px 0; }
+  .use-location-link{
+    display:block;
+    width:100%;
+    text-align:center;
+    background:none;
+    border:none;
+    color:var(--violet);
+    font-family:inherit;
+    font-weight:600;
+    font-size:0.84375rem;
+    cursor:pointer;
+    padding:10px 0 2px;
+  }
+
+  #settings{
+    display:none;
+    flex-direction:column;
+    flex:1;
+    padding:7% 6.4% 26px;
+    position:relative;
+    z-index:1;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .settings-head{ display:flex; align-items:center; gap:12px; margin-bottom:22px; }
+  .settings-title{ font-family:'Instrument Sans',sans-serif; font-weight:700; font-size:1.25rem; color:var(--ink); }
+  .setting-card{
+    background:var(--paper);
+    border:1px solid var(--ink);
+    border-radius:18px;
+    padding:18px;
+    margin-bottom:14px;
+  }
+  .setting-label{ font-weight:600; font-size:0.90625rem; margin-bottom:4px; }
+  .setting-label.tight{ margin-bottom:10px; }
+  .setting-desc{ font-size:0.78125rem; color:var(--ink-soft); margin-bottom:14px; line-height:1.5; }
+  .setting-desc.flush{ margin-bottom:0; }
+  .notification-options{ display:grid; gap:10px; margin-top:16px; }
+  .notification-option{ display:flex; align-items:center; gap:10px; font-size:0.8125rem; line-height:1.35; color:var(--ink-soft); }
+  .notification-option input{ width:17px; height:17px; margin:0; accent-color:var(--violet); flex-shrink:0; }
+  .notification-status{ margin-top:12px; font-size:0.75rem; line-height:1.4; color:var(--ink-soft); }
+  .notification-status:empty{ display:none; }
+  .threshold-row{ display:flex; align-items:center; gap:14px; }
+  .threshold-val{
+    font-weight:600;
+    font-size:1.25rem;
+    width:76px;
+    text-align:center;
+    background:var(--paper);
+    border:1px solid var(--ink);
+    border-radius:12px;
+    padding:8px 0;
+    color:var(--violet);
+  }
+  input[type=range]{
+    -webkit-appearance:none;
+    appearance:none;
+    flex:1;
+    height:4px;
+    border-radius:2px;
+    background:var(--ink);
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    background:var(--violet);
+    cursor:pointer;
+    border:3px solid var(--paper);
+    box-shadow:0 0 0 1px var(--violet);
+  }
+  .row-between{ display:flex; align-items:center; justify-content:space-between; }
+  .switch{ position:relative; width:46px; height:27px; flex-shrink:0; }
+  .switch input{ opacity:0; width:0; height:0; }
+  .slider-toggle{
+    position:absolute;
+    inset:0;
+    background:rgba(5,5,5,0.18);
+    border-radius:20px;
+    cursor:pointer;
+    transition:.2s;
+  }
+  .slider-toggle:before{
+    content:"";
+    position:absolute;
+    width:21px;
+    height:21px;
+    left:3px;
+    top:3px;
+    background:#fff;
+    border-radius:50%;
+    transition:.2s;
+    box-shadow:0 1px 3px rgba(0,0,0,.3);
+  }
+  .switch input:checked + .slider-toggle{ background:var(--violet); }
+  .switch input:checked + .slider-toggle:before{ transform:translateX(19px); }
+  .theme-options{ display:flex; gap:10px; }
+  .theme-opt{
+    flex:1;
+    padding:12px;
+    border-radius:14px;
+    border:1px solid var(--ink);
+    background:var(--paper);
+    text-align:center;
+    font-size:0.8125rem;
+    font-weight:600;
+    cursor:pointer;
+    color:var(--ink-soft);
+  }
+  .theme-opt.active{ border-color:var(--violet); color:var(--violet); }
+  .settings-note{ font-size:0.71875rem; color:var(--ink-soft); text-align:center; margin-top:auto; padding-top:14px; line-height:1.5; }
+
+  /* Installed app or phone browser: fill the screen instead of showing the mockup */
+  @media (display-mode: standalone), (max-width:500px){
+    body{ padding:0; background:var(--paper); }
+    .phone{
+      max-width:none;
+      height:100dvh;
+      aspect-ratio:auto;
+      border:0;
+      border-radius:0;
+      box-shadow:none;
+    }
+    .content{ padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+  }
+
+  @media (max-width:420px){
+    .hero-q{ font-size:clamp(1rem, 6.2vw, 1.625rem); }
+    .verdict{ font-size:3.125rem; }
+    .verdict::before{ font-size:3.125rem; }
+    .verdict-sub{ font-size:1.375rem; }
+    .row-temp{ font-size:1rem; }
+    .row-period{ font-size:1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone" data-theme="dark">
+
+  <div class="illustration-layer">
+    <div class="art-tint violet"></div>
+    <div class="art-tint ink"></div>
+    <div class="art-tint white"></div>
+    <div class="art-tint state-overlay" id="noOverlay"></div>
+    <div class="art-tint state-overlay blink is-hidden" id="yesOverlay"></div>
+  </div>
+
+  <!-- HOME -->
+  <div id="home" class="content">
+    <div class="topbar">
+      <button class="place" id="placeLabel">Locating…
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="topbar-actions">
+        <button class="iconbtn" id="infoBtn" aria-label="Info">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 10v7"></path><path d="M12 7h.01"></path></svg>
+        </button>
+        <button class="iconbtn" id="gearBtn" aria-label="Settings">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="now-temp" id="nowTemp">—</div>
+
+    <div class="hero">
+      <p class="hero-q">Should I drip my taps today?</p>
+      <div class="verdict" id="verdict">—</div>
+    </div>
+
+    <div class="verdict-sub" id="verdictSub">Checking today's lows against your threshold…</div>
+
+    <div class="forecast-date" id="forecastDate">Today</div>
+
+    <div class="forecast-list" id="forecastList">
+      <div class="state-msg">
+        <div class="skeleton-line wide"></div>
+        <div class="skeleton-line narrow"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="settings">
+    <div class="settings-head">
+      <button class="iconbtn" id="backBtn" aria-label="Back">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="settings-title">Settings</div>
+    </div>
+
+    <div class="setting-card">
+      <div class="setting-label">Low temperature threshold</div>
+      <div class="setting-desc">We'll tell you to drip your taps whenever the forecast for a period reaches this temperature or colder.</div>
+      <div class="threshold-row">
+        <input type="range" id="thresholdSlider" min="-30" max="0" step="1" value="-12">
+        <div class="threshold-val" id="thresholdVal">-12°C</div>
+      </div>
+    </div>
+
+    <div class="setting-card">
+      <div class="row-between">
+        <div>
+          <div class="setting-label">Notifications</div>
+          <div class="setting-desc flush">Forecast alerts for your saved location. Location and alert settings are stored to deliver them.</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="notifToggle">
+          <span class="slider-toggle"></span>
+        </label>
+      </div>
+      <div class="notification-options" id="notificationOptions">
+        <label class="notification-option"><input type="checkbox" class="notification-mode" value="cold-spell" checked> Once per cold spell</label>
+        <label class="notification-option"><input type="checkbox" class="notification-mode" value="morning-summary"> Daily morning summary</label>
+        <label class="notification-option"><input type="checkbox" class="notification-mode" value="before-period"> Before each cold period</label>
+      </div>
+      <div class="notification-status" id="notificationStatus" role="status" aria-live="polite"></div>
+    </div>
+
+    <div class="setting-card">
+      <div class="setting-label tight">Temperature unit</div>
+      <div class="theme-options">
+        <div class="theme-opt" id="unitC">Celsius</div>
+        <div class="theme-opt" id="unitF">Fahrenheit</div>
+      </div>
+    </div>
+
+    <div class="settings-note">Forecast data from Open-Meteo, updated using your device's location.</div>
+  </div>
+
+  <!-- INFO SHEET -->
+  <div class="overlay" id="overlay">
+    <div class="sheet">
+      <div class="sheet-title" id="sheetTitle">—</div>
+      <p class="sheet-body" id="sheetBody">—</p>
+      <button class="sheet-close" id="sheetClose">Got it</button>
+    </div>
+  </div>
+
+  <!-- APP INFO SHEET -->
+  <div class="overlay" id="infoOverlay">
+    <div class="sheet">
+      <div class="sheet-title">Quick guide</div>
+      <p class="sheet-body"><strong>Install DripCheck:</strong> A Progressive Web App (PWA) is essentially a website that you can install on your home screen that behaves like a regular app. To install DripCheck on iPhone, from your browser tap Share then Add to Home Screen. On Android, use the browser's install option or the address-bar install icon. On desktop, use the browser's install option or the address-bar install icon.</p>
+      <p class="sheet-body"><strong>Drip protection:</strong> When freezing weather is forecast, letting a faucet run as a small steady drip so water keeps moving through the pipe can help prevent frozen pipes. Focus on taps connected to pipes along exterior walls, in unheated areas, or drip the faucet farthest from the water entry point. A slow drip, roughly one drop per second, or a thin trickle, is usually sufficient.</p>
+      <button class="sheet-close" id="infoClose">Got it</button>
+    </div>
+  </div>
+
+  <!-- CITY SEARCH SHEET -->
+  <div class="overlay" id="cityOverlay">
+    <div class="sheet">
+      <div class="sheet-title">Set your location</div>
+      <input type="text" class="city-input" id="cityInput" placeholder="Search for a city…" autocomplete="off">
+      <div class="city-results" id="cityResults"></div>
+      <div class="city-hint" id="cityHint">Type at least 2 letters to search.</div>
+      <button class="use-location-link" id="useLocationLink">Use my current location instead</button>
+      <button class="sheet-close ghost" id="cityCancel">Cancel</button>
+    </div>
+  </div>
+
+  <!-- LOCATION DENIED SHEET -->
+  <div class="overlay" id="locationDeniedOverlay">
+    <div class="sheet">
+      <div class="sheet-title">Location access denied</div>
+      <p class="sheet-body">Location access was denied — search for a city below to continue.</p>
+      <button class="sheet-close" id="locationRetryBtn">Try again</button>
+      <button class="sheet-close ghost" id="locationSearchBtn">Search for a city instead</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="./push-config.js"></script>
+<script>
+(function(){
+
+  const PUSH_CONFIG = window.DRIPCHECK_PUSH_CONFIG || {};
+  const PREFS_KEY = 'dripcheck-notification-settings';
+  const VALID_MODES = ['cold-spell', 'morning-summary', 'before-period'];
+  function readSavedSettings(){
+    try{ return JSON.parse(localStorage.getItem(PREFS_KEY) || '{}'); }
+    catch(e){ return {}; }
+  }
+  const savedSettings = readSavedSettings();
+
+  const state = {
+    unit: 'C',
+    threshold: Number.isFinite(savedSettings.thresholdC) ? savedSettings.thresholdC : -12,
+    notifications: savedSettings.enabled === true,
+    notificationModes: Array.isArray(savedSettings.modes)
+      ? savedSettings.modes.filter(mode => VALID_MODES.includes(mode))
+      : ['cold-spell'],
+    coords: savedSettings.enabled && Number.isFinite(savedSettings.latitude) && Number.isFinite(savedSettings.longitude)
+      ? { latitude: savedSettings.latitude, longitude: savedSettings.longitude }
+      : null,
+    timezone: savedSettings.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    pushId: savedSettings.pushId || null,
+    pushToken: savedSettings.pushToken || null,
+    view: 'home',
+    place: savedSettings.place || 'Your Location',
+    buckets: null,
+    error: null
+  };
+
+  const els = {
+    phone: document.getElementById('phone'),
+    placeLabel: document.getElementById('placeLabel'),
+    nowTemp: document.getElementById('nowTemp'),
+    verdict: document.getElementById('verdict'),
+    verdictSub: document.getElementById('verdictSub'),
+    forecastDate: document.getElementById('forecastDate'),
+    forecastList: document.getElementById('forecastList'),
+    noOverlay: document.getElementById('noOverlay'),
+    yesOverlay: document.getElementById('yesOverlay'),
+    home: document.getElementById('home'),
+    settings: document.getElementById('settings'),
+    gearBtn: document.getElementById('gearBtn'),
+    backBtn: document.getElementById('backBtn'),
+    thresholdSlider: document.getElementById('thresholdSlider'),
+    thresholdVal: document.getElementById('thresholdVal'),
+    notifToggle: document.getElementById('notifToggle'),
+    notificationModes: [...document.querySelectorAll('.notification-mode')],
+    notificationStatus: document.getElementById('notificationStatus'),
+    unitC: document.getElementById('unitC'),
+    unitF: document.getElementById('unitF'),
+    infoBtn: document.getElementById('infoBtn'),
+    overlay: document.getElementById('overlay'),
+    sheetTitle: document.getElementById('sheetTitle'),
+    sheetBody: document.getElementById('sheetBody'),
+    sheetClose: document.getElementById('sheetClose'),
+    infoOverlay: document.getElementById('infoOverlay'),
+    infoClose: document.getElementById('infoClose'),
+    cityOverlay: document.getElementById('cityOverlay'),
+    cityInput: document.getElementById('cityInput'),
+    cityResults: document.getElementById('cityResults'),
+    cityHint: document.getElementById('cityHint'),
+    cityCancel: document.getElementById('cityCancel'),
+    useLocationLink: document.getElementById('useLocationLink'),
+    locationDeniedOverlay: document.getElementById('locationDeniedOverlay'),
+    locationRetryBtn: document.getElementById('locationRetryBtn'),
+    locationSearchBtn: document.getElementById('locationSearchBtn'),
+  };
+
+  function saveNotificationSettings(){
+    const settings = {
+      enabled: state.notifications,
+      modes: state.notificationModes,
+      thresholdC: state.threshold,
+      pushId: state.notifications ? state.pushId : null,
+      pushToken: state.notifications ? state.pushToken : null,
+    };
+    if(state.notifications && state.coords){
+      Object.assign(settings, {
+        latitude: state.coords.latitude,
+        longitude: state.coords.longitude,
+        place: state.place,
+        timezone: state.timezone,
+      });
+    }
+    localStorage.setItem(PREFS_KEY, JSON.stringify(settings));
+  }
+
+  function setNotificationStatus(message){
+    els.notificationStatus.textContent = message;
+  }
+
+  const pushApiBase = String(PUSH_CONFIG.apiBase || '').replace(/\/$/, '');
+  let serviceWorkerPromise = null;
+  if('serviceWorker' in navigator){
+    serviceWorkerPromise = navigator.serviceWorker.register('./sw.js').catch(error => {
+      console.error('Service worker registration failed:', error);
+      return null;
+    });
+  }
+
+  function apiUrl(path){ return `${pushApiBase}${path}`; }
+  function toBase64Url(bytes){
+    let binary = '';
+    bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+  function fromBase64Url(value){
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(base64 + '='.repeat((4 - base64.length % 4) % 4));
+    return Uint8Array.from(binary, character => character.charCodeAt(0));
+  }
+  function randomToken(){ return toBase64Url(crypto.getRandomValues(new Uint8Array(32))); }
+
+  async function syncPushSettings(){
+    if(!state.notifications || !state.pushId || !state.pushToken || !state.coords) return;
+    if(!state.notificationModes.length){
+      setNotificationStatus('Choose at least one alert timing.');
+      return;
+    }
+    if(!pushApiBase) return;
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if(!subscription) return;
+    const response = await fetch(apiUrl(`/api/subscriptions/${encodeURIComponent(state.pushId)}`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.pushToken}` },
+      body: JSON.stringify({ subscription: subscription.toJSON(), config: pushConfig() }),
+    });
+    if(!response.ok) throw new Error('Could not update notification settings.');
+    saveNotificationSettings();
+  }
+
+  function pushConfig(){
+    return {
+      latitude: state.coords.latitude,
+      longitude: state.coords.longitude,
+      place: state.place,
+      timezone: state.timezone,
+      thresholdC: state.threshold,
+      modes: state.notificationModes,
+    };
+  }
+
+  let pushSyncTimer = null;
+  function queuePushSettingsSync(){
+    clearTimeout(pushSyncTimer);
+    pushSyncTimer = setTimeout(()=>{
+      syncPushSettings().catch(error => {
+        console.error(error);
+        setNotificationStatus(error.message);
+      });
+    }, 600);
+  }
+
+  async function enableNotifications(){
+    if(!pushApiBase){
+      state.notifications = false;
+      els.notifToggle.checked = false;
+      setNotificationStatus('Push alerts are not connected yet.');
+      return;
+    }
+    if(!state.coords){
+      state.notifications = false;
+      els.notifToggle.checked = false;
+      setNotificationStatus('Choose a location before enabling alerts.');
+      return;
+    }
+    if(!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)){
+      state.notifications = false;
+      els.notifToggle.checked = false;
+      setNotificationStatus('Push notifications are not supported by this browser.');
+      return;
+    }
+    try{
+      const permission = await Notification.requestPermission();
+      if(permission !== 'granted') throw new Error('Notification permission was not granted.');
+      const registration = await (serviceWorkerPromise || navigator.serviceWorker.ready);
+      if(!registration) throw new Error('Could not register notifications on this device.');
+      const keyResponse = await fetch(apiUrl('/api/vapid-public-key'));
+      if(!keyResponse.ok) throw new Error('Could not connect to the notification service.');
+      const { publicKey } = await keyResponse.json();
+      if(!publicKey) throw new Error('The notification service is missing its VAPID key.');
+      let subscription = await registration.pushManager.getSubscription();
+      if(!subscription){
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: fromBase64Url(publicKey),
+        });
+      }
+
+      const isExistingRecord = Boolean(state.pushId && state.pushToken);
+      if(!isExistingRecord){
+        state.pushId = crypto.randomUUID();
+        state.pushToken = randomToken();
+      }
+      state.notifications = true;
+      const response = await fetch(apiUrl(isExistingRecord
+        ? `/api/subscriptions/${encodeURIComponent(state.pushId)}`
+        : '/api/subscriptions'), {
+        method: isExistingRecord ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(isExistingRecord ? { 'Authorization': `Bearer ${state.pushToken}` } : {}),
+        },
+        body: JSON.stringify({
+          ...(isExistingRecord ? {} : { id: state.pushId, token: state.pushToken }),
+          subscription: subscription.toJSON(),
+          config: pushConfig(),
+        }),
+      });
+      if(!response.ok) throw new Error('Could not save this device for notifications.');
+      els.notifToggle.checked = true;
+      saveNotificationSettings();
+      setNotificationStatus('Alerts are enabled for this device.');
+    }catch(error){
+      state.notifications = false;
+      els.notifToggle.checked = false;
+      setNotificationStatus(error.message || 'Could not enable notifications.');
+    }
+  }
+
+  async function disableNotifications(){
+    const previousId = state.pushId;
+    const previousToken = state.pushToken;
+    state.notifications = false;
+    state.pushId = null;
+    state.pushToken = null;
+    saveNotificationSettings();
+    try{
+      if(pushApiBase && previousId && previousToken){
+        await fetch(apiUrl(`/api/subscriptions/${encodeURIComponent(previousId)}`), {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${previousToken}` },
+        });
+      }
+      if('serviceWorker' in navigator){
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if(subscription) await subscription.unsubscribe();
+      }
+      setNotificationStatus('Alerts are disabled on this device.');
+    }catch(error){
+      setNotificationStatus('Alerts are disabled on this device.');
+      console.error('Could not fully remove the push subscription:', error);
+    }
+  }
+
+  const FALLBACK_CITIES = [
+    {name:'New York', admin1:'New York', country:'United States', latitude:40.7128, longitude:-74.0060},
+    {name:'Toronto', admin1:'Ontario', country:'Canada', latitude:43.6532, longitude:-79.3832},
+    {name:'Vancouver', admin1:'British Columbia', country:'Canada', latitude:49.2827, longitude:-123.1207},
+    {name:'Calgary', admin1:'Alberta', country:'Canada', latitude:51.0447, longitude:-114.0719},
+    {name:'Edmonton', admin1:'Alberta', country:'Canada', latitude:53.5461, longitude:-113.4938},
+    {name:'Winnipeg', admin1:'Manitoba', country:'Canada', latitude:49.8951, longitude:-97.1384},
+    {name:'Montreal', admin1:'Quebec', country:'Canada', latitude:45.5019, longitude:-73.5674},
+    {name:'Ottawa', admin1:'Ontario', country:'Canada', latitude:45.4215, longitude:-75.6972},
+    {name:'Chicago', admin1:'Illinois', country:'United States', latitude:41.8781, longitude:-87.6298},
+    {name:'Minneapolis', admin1:'Minnesota', country:'United States', latitude:44.9778, longitude:-93.2650},
+    {name:'Denver', admin1:'Colorado', country:'United States', latitude:39.7392, longitude:-104.9903},
+    {name:'Seattle', admin1:'Washington', country:'United States', latitude:47.6062, longitude:-122.3321},
+    {name:'Boston', admin1:'Massachusetts', country:'United States', latitude:42.3601, longitude:-71.0589},
+    {name:'Anchorage', admin1:'Alaska', country:'United States', latitude:61.2181, longitude:-149.9003},
+    {name:'London', admin1:'England', country:'United Kingdom', latitude:51.5072, longitude:-0.1276},
+    {name:'Edinburgh', admin1:'Scotland', country:'United Kingdom', latitude:55.9533, longitude:-3.1883},
+    {name:'Oslo', admin1:'', country:'Norway', latitude:59.9139, longitude:10.7522},
+    {name:'Stockholm', admin1:'', country:'Sweden', latitude:59.3293, longitude:18.0686},
+    {name:'Helsinki', admin1:'', country:'Finland', latitude:60.1699, longitude:24.9384},
+    {name:'Moscow', admin1:'', country:'Russia', latitude:55.7558, longitude:37.6173},
+    {name:'Berlin', admin1:'', country:'Germany', latitude:52.5200, longitude:13.4050},
+    {name:'Warsaw', admin1:'', country:'Poland', latitude:52.2297, longitude:21.0122},
+    {name:'Reykjavik', admin1:'', country:'Iceland', latitude:64.1466, longitude:-21.9426},
+    {name: 'Thunder Bay', admin1:'Ontario', country:'Canada', latitude:48.3809, longitude:-89.2477},
+    {name: 'Sault Ste. Marie', admin1:'Ontario', country:'Canada', latitude:46.5219, longitude:-84.3460},
+    {name: 'Sudbury', admin1:'Ontario', country:'Canada', latitude:46.4900, longitude:-80.9900},
+    {name: 'North Bay', admin1:'Ontario', country:'Canada', latitude:46.3090, longitude:-79.4608},
+    {name: 'Timmins', admin1:'Ontario', country:'Canada', latitude:48.4758, longitude:-81.3300},
+    {name: 'Saskatoon', admin1:'Saskatchewan', country:'Canada', latitude:52.1579, longitude:-106.6700},
+    {name: 'Regina', admin1:'Saskatchewan', country:'Canada', latitude:50.4452, longitude:-104.6189},
+    {name: 'Belgrano II Base', admin1:'', country:'Argentina', latitude:-77.8700, longitude:-34.6167},
+    {name: 'Esperanza Base', admin1:'', country:'Argentina', latitude:-63.4000, longitude:-56.9667},
+    {name: 'Dawson City', admin1:'Yukon', country:'Canada', latitude:64.0601, longitude:-139.4320},
+    {name: 'Whitehorse', admin1:'Yukon', country:'Canada', latitude:60.7212, longitude:-135.0568},
+    {name: 'Iqaluit', admin1:'Nunavut', country:'Canada', latitude:63.7467, longitude:-68.5167},
+    {name: 'Yellowknife', admin1:'Northwest Territories', country:'Canada', latitude:62.4540, longitude:-114.3718},
+  ];
+
+  function searchFallback(q){
+    const query = q.toLowerCase();
+    return FALLBACK_CITIES.filter(c => c.name.toLowerCase().startsWith(query)).slice(0,6);
+  }
+
+  function cToF(c){ return c * 9/5 + 32; }
+  function fToC(f){ return (f - 32) * 5/9; }
+  function renderTodayDate(){
+    const now = new Date();
+    els.forecastDate.textContent = now.toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric'
+    });
+  }
+  function fmtT(tC){
+    const v = state.unit === 'F' ? cToF(tC) : tC;
+    return (v > 0 ? '+' : '') + Math.round(v) + '°' + state.unit;
+  }
+
+  function periodPhrase(label){
+    return label.toLowerCase() === 'overnight' ? 'overnight' : `this ${label.toLowerCase()}`;
+  }
+
+  function renderHero(){
+    if(!state.buckets) return;
+    const anyYes = state.buckets.some(b => b.needDrip);
+    els.yesOverlay.classList.toggle('is-hidden', !anyYes);
+    els.noOverlay.classList.toggle('is-hidden', anyYes);
+    els.verdict.textContent = anyYes ? 'Yes' : 'No';
+    els.verdict.classList.toggle('no', !anyYes);
+    els.verdictSub.classList.toggle('alarm', anyYes);
+    if(anyYes){
+      const worst = state.buckets.filter(b=>b.needDrip).sort((a,b)=>a.temp-b.temp)[0];
+      els.verdictSub.textContent = `YES, ${worst.label.toLowerCase()} lows of ${fmtT(worst.temp)} expected — drip your faucets.`;
+    } else {
+      els.verdictSub.textContent = `NO, all periods stay above your ${fmtT(state.threshold)} threshold today.`;
+    }
+  }
+
+  function renderList(){
+    if(state.error){
+      if(state.error.includes('Location access was denied')){
+        els.forecastList.innerHTML = '';
+        return;
+      }
+      els.forecastList.innerHTML = `<div class="state-msg">
+        <div>${state.error}</div>
+        <button class="retry" id="retryBtn">Try again</button>
+        <button class="retry" id="cityFallbackBtn" style="border-color:var(--ink); color:var(--text-muted);">Search for a city instead</button>
+      </div>`;
+      document.getElementById('retryBtn').addEventListener('click', init);
+      document.getElementById('cityFallbackBtn').addEventListener('click', openCitySheet);
+      return;
+    }
+    if(!state.buckets){
+      els.forecastList.innerHTML = `<div class="state-msg">
+        <div class="skeleton-line" style="width:70%;"></div>
+        <div class="skeleton-line" style="width:50%;"></div>
+      </div>`;
+      return;
+    }
+    els.forecastList.innerHTML = state.buckets.map((b, i) => `
+      <div class="row ${b.needDrip ? 'alarm':''}">
+        <div class="row-temp">${fmtT(b.temp)}</div>
+        <div class="row-period">${b.label.toLowerCase()}</div>
+        <button class="info-btn" data-i="${i}" aria-label="More info">i</button>
+      </div>
+    `).join('');
+    els.forecastList.querySelectorAll('.info-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=> openSheet(state.buckets[+btn.dataset.i]));
+    });
+  }
+
+  function openSheet(b){
+    els.sheetTitle.textContent = `${b.label} — ${b.window}`;
+    els.sheetBody.textContent = b.needDrip
+      ? `Temperatures may reach lows of ${fmtT(b.temp)} ${periodPhrase(b.label)}. Be sure to drip your faucets to prevent pipes from freezing.`
+      : `Temperatures are expected to stay around ${fmtT(b.temp)} ${periodPhrase(b.label)} — above your ${fmtT(state.threshold)} threshold, so no dripping needed.`;
+    els.overlay.classList.add('open');
+  }
+  els.sheetClose.addEventListener('click', ()=> els.overlay.classList.remove('open'));
+  els.overlay.addEventListener('click', (e)=>{ if(e.target === els.overlay) els.overlay.classList.remove('open'); });
+
+  function openInfoSheet(){ els.infoOverlay.classList.add('open'); }
+  function closeInfoSheet(){ els.infoOverlay.classList.remove('open'); }
+  els.infoBtn.addEventListener('click', openInfoSheet);
+  els.infoClose.addEventListener('click', closeInfoSheet);
+  els.infoOverlay.addEventListener('click', (e)=>{ if(e.target === els.infoOverlay) closeInfoSheet(); });
+
+  function bucketHours(times, temps){
+    const now = new Date();
+    const buckets = [
+      { key:'morning', label:'Morning', window:'6 AM – 12 PM', from:6, to:12, temp:null },
+      { key:'afternoon', label:'Afternoon', window:'12 PM – 6 PM', from:12, to:18, temp:null },
+      { key:'evening', label:'Evening', window:'6 PM – 10 PM', from:18, to:22, temp:null },
+      { key:'overnight', label:'Overnight', window:'10 PM – 6 AM', from:22, to:30, temp:null },
+    ];
+    times.forEach((tStr, idx) => {
+      const dt = new Date(tStr);
+      if(dt < now) return;
+      const hoursFromNow = (dt - now) / 3600000;
+      if(hoursFromNow > 30) return;
+      const hour = dt.getHours();
+      buckets.forEach(b=>{
+        let inWindow;
+        if(b.to > 24){ inWindow = hour >= b.from || hour < (b.to - 24); }
+        else { inWindow = hour >= b.from && hour < b.to; }
+        if(inWindow){
+          if(b.temp === null || temps[idx] < b.temp) b.temp = temps[idx];
+        }
+      });
+    });
+    return buckets
+      .filter(b => b.temp !== null)
+      .map(b => ({ label:b.label, window:b.window, temp:b.temp, needDrip: b.temp <= state.threshold }));
+  }
+
+  async function reverseGeocode(lat, lon){
+    try{
+      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&count=1`);
+      const d = await r.json();
+      if(d.results && d.results[0]) return d.results[0].name;
+    }catch(e){}
+    return 'Your Location';
+  }
+
+  async function fetchWeather(lat, lon){
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&current_weather=true&temperature_unit=celsius&timezone=auto&forecast_days=2`;
+    const r = await fetch(url);
+    if(!r.ok) throw new Error('bad response');
+    return r.json();
+  }
+
+  function placeLabelHTML(name){
+    return `${name}
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`;
+  }
+
+  async function loadForCoords(lat, lon, placeName){
+    state.error = null;
+    state.coords = { latitude: lat, longitude: lon };
+    els.nowTemp.textContent = '—';
+    renderList();
+    try{
+      const data = await fetchWeather(lat, lon);
+      state.place = placeName;
+      state.timezone = data.timezone || state.timezone;
+      els.placeLabel.innerHTML = placeLabelHTML(placeName);
+      els.nowTemp.textContent = fmtT(data.current_weather.temperature);
+      state.buckets = bucketHours(data.hourly.time, data.hourly.temperature_2m);
+      renderHero();
+      renderList();
+      if(state.notifications){
+        saveNotificationSettings();
+        syncPushSettings().catch(error => {
+          console.error(error);
+          setNotificationStatus(error.message);
+        });
+      }
+    }catch(e){
+      state.error = "Couldn't load the forecast. Check your connection and try again.";
+      renderList();
+    }
+  }
+
+  // ---- city search sheet ----
+  let searchTimer = null;
+  function openCitySheet(){
+    els.cityOverlay.classList.add('open');
+    els.cityInput.value = '';
+    els.cityResults.innerHTML = '';
+    els.cityHint.textContent = 'Type at least 2 letters to search.';
+    setTimeout(()=> els.cityInput.focus(), 200);
+  }
+  function closeCitySheet(){ els.cityOverlay.classList.remove('open'); }
+  function openLocationDeniedSheet(){ els.locationDeniedOverlay.classList.add('open'); }
+  function closeLocationDeniedSheet(){ els.locationDeniedOverlay.classList.remove('open'); }
+
+  els.placeLabel.addEventListener('click', openCitySheet);
+  els.cityCancel.addEventListener('click', closeCitySheet);
+  els.cityOverlay.addEventListener('click', (e)=>{ if(e.target === els.cityOverlay) closeCitySheet(); });
+  els.locationRetryBtn.addEventListener('click', ()=>{ closeLocationDeniedSheet(); init(false); });
+  els.locationSearchBtn.addEventListener('click', ()=>{ closeLocationDeniedSheet(); openCitySheet(); });
+  els.locationDeniedOverlay.addEventListener('click', (e)=>{ if(e.target === els.locationDeniedOverlay) closeLocationDeniedSheet(); });
+
+  els.cityInput.addEventListener('input', (e)=>{
+    const q = e.target.value.trim();
+    clearTimeout(searchTimer);
+    if(q.length < 2){
+      els.cityResults.innerHTML = '';
+      els.cityHint.textContent = 'Type at least 2 letters to search.';
+      return;
+    }
+    els.cityHint.textContent = 'Searching…';
+    searchTimer = setTimeout(async ()=>{
+      let results = [];
+      let usedFallback = false;
+      try{
+        const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6`);
+        const d = await r.json();
+        results = d.results || [];
+      }catch(err){
+        console.error('Live city search failed, using offline list:', err);
+        results = searchFallback(q);
+        usedFallback = true;
+      }
+
+      if(!results.length){
+        els.cityResults.innerHTML = '';
+        els.cityHint.textContent = usedFallback
+          ? "Live search is unreachable right now, and this city isn't in the offline list. Try a nearby major city."
+          : 'No matches found.';
+        return;
+      }
+      els.cityHint.textContent = usedFallback ? 'Live search unavailable — showing offline matches.' : '';
+      els.cityResults.innerHTML = results.map((res, i) => {
+        const region = [res.admin1, res.country].filter(Boolean).join(', ');
+        return `<button class="city-result" data-i="${i}">${res.name}<span class="sub">${region}</span></button>`;
+      }).join('');
+      els.cityResults.querySelectorAll('.city-result').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const res = results[+btn.dataset.i];
+          closeCitySheet();
+          loadForCoords(res.latitude, res.longitude, res.name);
+        });
+      });
+    }, 350);
+  });
+
+  els.useLocationLink.addEventListener('click', ()=>{
+    closeCitySheet();
+    init(false);
+  });
+
+  async function init(useSavedLocation = true){
+    state.error = null;
+    if(useSavedLocation && state.notifications && state.coords){
+      loadForCoords(state.coords.latitude, state.coords.longitude, state.place);
+      return;
+    }
+    els.placeLabel.innerHTML = placeLabelHTML('Locating…');
+    els.nowTemp.textContent = '—';
+    renderList();
+
+    if(!navigator.geolocation){
+      state.error = "Location isn't available in this browser.";
+      els.placeLabel.innerHTML = placeLabelHTML('No location');
+      renderList();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(async (pos)=>{
+      const { latitude, longitude } = pos.coords;
+      state.coords = { latitude, longitude };
+      try{
+        const [place, data] = await Promise.all([
+          reverseGeocode(latitude, longitude),
+          fetchWeather(latitude, longitude)
+        ]);
+        state.place = place;
+        state.timezone = data.timezone || state.timezone;
+        els.placeLabel.innerHTML = placeLabelHTML(place);
+        els.nowTemp.textContent = fmtT(data.current_weather.temperature);
+        state.buckets = bucketHours(data.hourly.time, data.hourly.temperature_2m);
+        renderHero();
+        renderList();
+        if(state.notifications){
+          saveNotificationSettings();
+          syncPushSettings().catch(error => {
+            console.error(error);
+            setNotificationStatus(error.message);
+          });
+        }
+      }catch(e){
+        state.error = "Couldn't load the forecast. Check your connection and try again.";
+        renderList();
+      }
+    }, (err)=>{
+      state.error = 'Location access was denied — search for a city below to continue.';
+      els.placeLabel.innerHTML = placeLabelHTML('Set location');
+      renderList();
+      openLocationDeniedSheet();
+    }, { timeout: 10000 });
+  }
+
+  // ---- settings wiring ----
+  function goSettings(){
+    state.view = 'settings';
+    els.home.style.display = 'none';
+    els.settings.style.display = 'flex';
+  }
+  function goHome(){
+    state.view = 'home';
+    els.settings.style.display = 'none';
+    els.home.style.display = 'flex';
+  }
+  els.gearBtn.addEventListener('click', goSettings);
+  els.backBtn.addEventListener('click', goHome);
+
+  els.thresholdSlider.addEventListener('input', (e)=>{
+    const raw = +e.target.value;
+    state.threshold = state.unit === 'F' ? fToC(raw) : raw;
+    els.thresholdVal.textContent = raw + '°' + state.unit;
+    if(state.buckets){
+      state.buckets = state.buckets.map(b => ({ ...b, needDrip: b.temp <= state.threshold }));
+      renderHero(); renderList();
+    }
+    saveNotificationSettings();
+    queuePushSettingsSync();
+  });
+
+  els.notifToggle.addEventListener('change', (e)=>{
+    if(e.target.checked) enableNotifications();
+    else disableNotifications();
+  });
+  els.notificationModes.forEach(input=>{
+    input.checked = state.notificationModes.includes(input.value);
+    input.addEventListener('change', ()=>{
+      const selectedModes = els.notificationModes.filter(modeInput => modeInput.checked).map(modeInput => modeInput.value);
+      if(!selectedModes.length){
+        input.checked = true;
+        setNotificationStatus('Keep at least one alert schedule selected.');
+        return;
+      }
+      state.notificationModes = selectedModes;
+      saveNotificationSettings();
+      queuePushSettingsSync();
+    });
+  });
+
+  function setUnit(u){
+    if(state.unit === u) return;
+    state.unit = u;
+    els.unitC.classList.toggle('active', u === 'C');
+    els.unitF.classList.toggle('active', u === 'F');
+    // convert the slider's displayed range/value into the new unit
+    if(u === 'F'){
+      els.thresholdSlider.min = Math.round(cToF(-30));
+      els.thresholdSlider.max = Math.round(cToF(0));
+      els.thresholdSlider.value = Math.round(cToF(state.threshold));
+    } else {
+      els.thresholdSlider.min = -30;
+      els.thresholdSlider.max = 0;
+      els.thresholdSlider.value = Math.round(state.threshold);
+    }
+    els.thresholdVal.textContent = els.thresholdSlider.value + '°' + state.unit;
+    if(state.buckets){ renderHero(); renderList(); }
+  }
+  els.unitC.addEventListener('click', ()=> setUnit('C'));
+  els.unitF.addEventListener('click', ()=> setUnit('F'));
+  setUnit('C');
+  els.thresholdSlider.value = String(Math.round(state.threshold));
+  els.thresholdVal.textContent = state.threshold + '°C';
+  els.notifToggle.checked = state.notifications;
+  if(state.notifications) setNotificationStatus('Alerts are enabled for this device.');
+  if(!state.notificationModes.length){
+    state.notificationModes = ['cold-spell'];
+    els.notificationModes[0].checked = true;
+  }
+  renderTodayDate();
+
+  init();
+})();
+</script>
+</body>
+</html>

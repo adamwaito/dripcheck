@@ -1,0 +1,16 @@
+{
+  "name": "dripcheck-push",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:push": "wrangler dev",
+    "deploy:push": "wrangler deploy",
+    "db:create": "wrangler d1 create dripcheck-push",
+    "db:migrate:local": "wrangler d1 execute dripcheck-push --local --file=worker/schema.sql",
+    "db:migrate:remote": "wrangler d1 execute dripcheck-push --remote --file=worker/schema.sql",
+    "vapid:generate": "node worker/generate-vapid-keys.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
